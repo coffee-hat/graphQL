@@ -19,16 +19,24 @@ const typeDefs = `#graphql
       allergens: String
   }
 
+  type Cart {
+    id: ID!
+    dish_id: ID!
+  }
+
   type Query {
     dishes: [Dish]
     dish(id: ID!): Dish
+    cart: [Cart]
   }
 
   type Mutation {
     addDish(name: String!, description: String, price: Float!, image_url: String!, allergens: String): String
     updateDish(id: ID!, name: String, description: String, price: Float, image_url: String, allergens: String): String
     deleteDish(id: ID!): String
+
     addToCart(id: ID!): String
+    deleteFromCart(id: ID!): String
   }
 `
 
@@ -43,6 +51,10 @@ const resolvers = {
 
         return db.dish.findOne({ where: { id: id } })
       },
+      cart: async (parent, args) => {
+        const cartElements = await db.cart.findAll();
+        return cartElements;
+      }
     },
     Mutation: {
       addDish: async (parent, args) => {
@@ -79,10 +91,25 @@ const resolvers = {
       addToCart: async (parent, args) => {
         const { id } = args
 
+        const dishIds = await db.cart.findAll();
         const currentDish = await db.dish.findOne({ where: { id: id }});
-        await currentDish.createCart();
 
+        if(dishIds.find(i => i.dataValues.dish_id == id)){
+          return "Dish already in cart"
+        }
+        
+        await currentDish.createCart();
         return "Dish add to cart"
+      },
+      deleteFromCart : async (parent, args) => {
+        const { id } = args
+
+        await db.cart.destroy({
+          where: {
+            id: id
+          }
+        });
+        return "Dish delete from cart"
       }
     },
 }
